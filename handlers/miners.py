@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
-from schemas.metrics import MinerData
+from schemas.metrics import Metrics
 from schemas.miner import Miner
 from services.miners import *
 from .utilities import validate_api_key
@@ -8,88 +8,82 @@ from .utilities import validate_api_key
 router = APIRouter()
 
 
-@router.post('/register')
+@router.post('/register', status_code=201)
 async def handle_register_miner(miner: Miner, api_key: str = Depends(validate_api_key)):
     try:
-        response = {
-            'status': 200,
-            'data': {}
+        await miner_service.register_miner(miner)
+        return {
+            'message': 'Registered successfully'
         }
-        response['data'] = await miner_service.register_miner(miner)
-        return response
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post('/record')
-async def record_metrics(miner_data: MinerData, api_key: str = Depends(validate_api_key)):
+@router.post('/record', status_code=201)
+async def record_metrics(miner_data: Metrics, api_key: str = Depends(validate_api_key)):
     try:
-        response = {
-            'status': 200,
-            'data': {}
+        await metric_service.record(miner_data)
+        return {
+            'message': 'Recorded successfully'
         }
-        response['data'] = await metric_service.record_metrics(miner_data)
-        return response
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get('/devices')
+@router.get('/devices', status_code=202)
 async def get_devices(api_key: str = Depends(validate_api_key)):
-    response = {
-        'status': 200,
-        'data': {}
-    }
-    response['data'] = await miner_service.get_miners()
-    return response
-
-
-@router.get('/metrics')
-async def get_metrics(api_key: str = Depends(validate_api_key)):
-    response = {
-        'status': 200, 
-        'data': {}
-    }
-
     miners = await miner_service.get_miners()
-    for miner in miners:
-        metrics = await metric_service.get_metrics(miner.tag)
-        response['data'][miner.tag] = [m.dict() for m in metrics]
-
-    return response
-        
-
-@router.get('/metrics/latest')
-async def handle_get_latest_metrics(tag: Optional[str] = Query(None), api_key: str = Depends(validate_api_key)):
-    response = {
-        'status': 200,
-        'data': {}
-    }
-
-    miners = await miner_service.get_miners()
-    if tag:
-        miners = [miner for miner in miners if miner.tag == tag]
-    
-    for miner in miners:
-        metrics = await metric_service.get_metrics(miner.tag, limit=1)
-        response['data'][miner.tag] = metrics[0]
-
-    return response
+    return [
+        {
+            'tag': m.tag,
+            'name': m.name,
+            'model': m.model,
+            'is_active': await miner_service.is_active(m.tag)
+        }
+        for m in miners
+    ]
 
 
-@router.get('/metrics/{tag}')
-async def handle_get_miner_metrics(tag: str, limit: Optional[int] = Query(1), api_key: str = Depends(validate_api_key)):
-    response = {
-        'status': 200,
-        'data': {}
-    }
-
+@router.get('/{tag}/metrics', status_code=202)
+async def get_current_metrics(tag: str, api_key: str = Depends(validate_api_key)):
     if not await miner_service.is_miner(tag):
-        response['status'] = 400
-        response['message'] = 'Miner is not found'
-        return response
+        raise HTTPException(status_code=404, detail='No miner with such tag found')
+    
+    if not await miner_service.is_active(tag):
+        return {
+            'tag': tag,
+            'active': False,
+            'message': 'The miner is inactive'
+        }
 
-    metrics = await metric_service.get_metrics(tag=tag, limit=limit)
-    response['data'][tag] = metrics
+    metrics = await metric_service.get_last(tag)
+    return {
+        'tag': tag,
+        'active': await miner_service.is_active(tag),
+        'hashrate': metrics.hashrate,
+        'power': metrics.power,
+        'voltage': metrics.voltage,
+        'time': metrics.time
+    }
 
-    return response
+
+@router.get('/{tag}/history', status_code=202)
+async def get_metric_history(tag: str, param: str = Query(...), last_hours: int = Query(24), points: int = Query(500), api_key: str = Depends(validate_api_key)):
+    if not await miner_service.is_miner(tag):
+        raise HTTPException(status_code=404, detail='No miner with such tag found')
+    
+    try:
+        history = await metric_service.get_history(tag, param, last_hours, points)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        'tag': tag,
+        'active': await miner_service.is_active(tag),
+        'param': param,
+        'last_hours': last_hours,
+        'points': len(history),
+        'data': history
+    }
