@@ -20,7 +20,7 @@ async def handle_register_miner(miner: Miner, api_key: str = Depends(validate_ap
 
 
 @router.post('/record', status_code=201)
-async def record_metrics(miner_data: Metrics, api_key: str = Depends(validate_api_key)):
+async def handle_record_metrics(miner_data: Metrics, api_key: str = Depends(validate_api_key)):
     try:
         await record_metrics(miner_data)
         return {
@@ -31,7 +31,7 @@ async def record_metrics(miner_data: Metrics, api_key: str = Depends(validate_ap
 
 
 @router.get('/devices', status_code=202)
-async def get_devices(api_key: str = Depends(validate_api_key)):
+async def handle_get_devices(api_key: str = Depends(validate_api_key)):
     miners = await get_miners()
     return [
         {
@@ -45,7 +45,7 @@ async def get_devices(api_key: str = Depends(validate_api_key)):
 
 
 @router.get('/{tag}/metrics', status_code=202)
-async def get_current_metrics(tag: str, api_key: str = Depends(validate_api_key)):
+async def handle_get_current_metrics(tag: str, api_key: str = Depends(validate_api_key)):
     if not await is_registered(tag):
         raise HTTPException(status_code=404, detail='No miner with such tag found')
     
@@ -68,7 +68,7 @@ async def get_current_metrics(tag: str, api_key: str = Depends(validate_api_key)
 
 
 @router.get('/{tag}/history', status_code=202)
-async def get_metric_history(tag: str, param: str = Query(...), last_hours: int = Query(24), points: int = Query(500), api_key: str = Depends(validate_api_key)):
+async def handle_get_metric_history(tag: str, param: str = Query(...), last_hours: int = Query(24), points: int = Query(500), api_key: str = Depends(validate_api_key)):
     if not await is_registered(tag):
         raise HTTPException(status_code=404, detail='No miner with such tag found')
     
