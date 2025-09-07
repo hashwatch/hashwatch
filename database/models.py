@@ -28,7 +28,7 @@ class Metric(Base):
     __tablename__ = "metrics"
 
     id:         Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
-    time:       Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    time:       Mapped[str] = mapped_column(DateTime)
     miner_tag:  Mapped[str] = mapped_column(ForeignKey("miners.tag"))
     hashrate:   Mapped[int] = mapped_column(Integer)
     power:      Mapped[int] = mapped_column(Integer)

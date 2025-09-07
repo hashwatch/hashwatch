@@ -65,13 +65,14 @@ class Database:
     #
     #   Metrics
     #
-    async def add_metric(self, tag: str, hashrate: int, power: int, voltage: int):
+    async def add_metric(self, tag: str, hashrate: int, power: int, voltage: int, time: datetime):
         async with self.SessionLocal() as session:
             metric = Metric(
                 miner_tag=tag,
                 hashrate=hashrate,
                 power=power,
-                voltage=voltage
+                voltage=voltage,
+                time=time
             )
             session.add(metric)
             await session.commit()
@@ -83,8 +84,8 @@ class Database:
             stmt = (
                 select(Metric)
                 .where(Metric.miner_tag == tag)
-                .where(Metric.time >= start)
-                .where(Metric.time <= end)
+                # .where(Metric.time >= start)
+                # .where(Metric.time <= end)
                 .order_by(Metric.time.asc())
             )
             result = await session.execute(stmt)

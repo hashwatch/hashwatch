@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from database.crud import db
 from database.models import Miner as MinerORM, Metric as MetricORM
 from schemas.metrics import Metrics
@@ -38,19 +38,21 @@ class MinerService:
         global cached_metrics
 
         last_seen = cached_metrics.get(tag)
+        print(last_seen)
         if last_seen is None:
             last_seen = await db.get_last_seen(tag)
             if  last_seen is None:
                 return False
+        else:
+            last_seen = last_seen.time
 
+        print(datetime.now() - last_seen)
         return datetime.now() - last_seen < timedelta(seconds=THRESHOLD_SEC)
 
 
 class MetricService:
     async def get_history(self, tag: str, param: str, last_hours: int = 24, points: int = 500) -> List[Dict]:
-        result: List[Dict[str, Any[int, float, str]]] = []
-
-        end_time = datetime.now()
+        end_time = datetime.now(timezone.utc)
         start_time = end_time - timedelta(hours=last_hours)
 
         metrics = await db.get_metrics_by_miner_period(tag, start=start_time, end=end_time)
@@ -61,14 +63,15 @@ class MetricService:
             step = len(metrics) / points
             metrics = [metrics[int(i * step)] for i in range(points)]
 
+        print('Metrics len is: ', len(metrics))
+
         return [
             {
                 'time': m.time,
                 'value': getattr(m, param)
             } 
             for m in metrics
-        ] 
-
+        ]
 
 
     async def get_all(self, tag: str, limit: int = 100) -> List[Metrics]:
@@ -98,17 +101,18 @@ class MetricService:
     async def record(self, metric_in: Metrics):
         global cached_metrics
 
-        miner = await db.get_miner(metric_in.tag)
-        if not miner:
+        if not await db.is_miner_registered(metric_in.tag):
             raise ValueError("Unregistered miner")
         
+        metric_in.time = datetime.now()
         cached_metrics[metric_in.tag] = metric_in
 
-        metric = await db.add_metric(
+        await db.add_metric(
             tag=metric_in.tag,
             hashrate=metric_in.hashrate,
             power=metric_in.power,
-            voltage=metric_in.voltage
+            voltage=metric_in.voltage,
+            time=metric_in.time
         )
 
 

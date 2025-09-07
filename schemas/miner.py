@@ -6,6 +6,6 @@ class Miner(BaseModel):
     tag:        str
     name:       Optional[str]
     model:      Optional[str]
-    is_active:  bool
+    is_active:  Optional[bool] = False
 
 
