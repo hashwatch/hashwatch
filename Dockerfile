@@ -1,7 +1,7 @@
 FROM python:3.12
 
 RUN pip install --upgrade pip \
-    && pip install poetry \
+    && pip install poetry \ 
     && pip install uvicorn
 
 WORKDIR /hashwatch
