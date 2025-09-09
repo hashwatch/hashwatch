@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from app.schemas.metrics import Metrics
 from app.schemas.miner import Miner
-from app.services.miners import *
+from app.internal.miners import *
 from .utilities import validate_api_key
 
 router = APIRouter()
