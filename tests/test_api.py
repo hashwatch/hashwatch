@@ -2,7 +2,7 @@ import time
 
 from fastapi.testclient import TestClient
 from app.main import app
-from app.services.config import THRESHOLD_SEC
+from app.internal.config import THRESHOLD_SEC
 
 API_KEY = 'EXAMPLE_API_KEY'
 
