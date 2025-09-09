@@ -1,9 +1,9 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta, timezone
-from database.crud import db
-from database.models import Miner as MinerORM, Metric as MetricORM
-from schemas.metrics import Metrics
-from schemas.miner import Miner
+from app.database.crud import db
+from app.database.models import Miner as MinerORM, Metric as MetricORM
+from app.schemas.metrics import Metrics
+from app.schemas.miner import Miner
 from .config import THRESHOLD_SEC
 
 
